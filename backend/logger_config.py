@@ -1,49 +1,50 @@
-# Logging Configuration
+"""
+Structured logging configuration for Urbankinda.
+Provides JSON logging for easy parsing and monitoring.
+"""
 
 import logging
-import logging.handlers
+import sys
 from pathlib import Path
-from config import settings
+from pythonjsonlogger import jsonlogger
+from config import LOG_LEVEL, LOGS_DIR, DEBUG
 
+# Create logs directory
+LOGS_DIR.mkdir(exist_ok=True, parents=True)
 
-def setup_logging():
-    """Configure application logging."""
-    
-    # Create logs directory
-    log_dir = Path(settings.LOG_FILE).parent
-    log_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Root logger
-    root_logger = logging.getLogger()
-    root_logger.setLevel(getattr(logging, settings.LOG_LEVEL))
-    
-    # File handler with rotation
-    file_handler = logging.handlers.RotatingFileHandler(
-        settings.LOG_FILE,
-        maxBytes=settings.LOG_MAX_BYTES,
-        backupCount=settings.LOG_BACKUP_COUNT
-    )
-    file_handler.setLevel(getattr(logging, settings.LOG_LEVEL))
-    
-    # Console handler
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(getattr(logging, settings.LOG_LEVEL))
-    
-    # Formatter
-    formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
-    )
-    file_handler.setFormatter(formatter)
-    console_handler.setFormatter(formatter)
-    
-    # Add handlers
-    root_logger.addHandler(file_handler)
-    root_logger.addHandler(console_handler)
-    
-    return root_logger
+# Configure root logger
+logger = logging.getLogger()
+logger.setLevel(getattr(logging, LOG_LEVEL))
 
+# JSON formatter for structured logging
+json_formatter = jsonlogger.JsonFormatter(
+    fmt='%(timestamp)s %(level)s %(name)s %(message)s'
+)
+
+# Console handler (stdout)
+console_handler = logging.StreamHandler(sys.stdout)
+console_handler.setLevel(getattr(logging, LOG_LEVEL))
+console_handler.setFormatter(json_formatter)
+logger.addHandler(console_handler)
+
+# File handler
+file_handler = logging.FileHandler(
+    LOGS_DIR / 'urbankinda.log',
+    mode='a'
+)
+file_handler.setLevel(getattr(logging, LOG_LEVEL))
+file_handler.setFormatter(json_formatter)
+logger.addHandler(file_handler)
+
+# Error file handler
+error_handler = logging.FileHandler(
+    LOGS_DIR / 'urbankinda_errors.log',
+    mode='a'
+)
+error_handler.setLevel(logging.ERROR)
+error_handler.setFormatter(json_formatter)
+logger.addHandler(error_handler)
 
 def get_logger(name: str) -> logging.Logger:
-    """Get a logger instance."""
+    """Get a logger with the specified name."""
     return logging.getLogger(name)
